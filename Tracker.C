@@ -191,6 +191,33 @@ vector<Point> findDOCA(Point A, Point B, Point C, Point D)
     }
 }
 
+double Contrast(TH2D * histo, double pix, int nbin)
+{
+double d = 50;
+int n_pix = floor(d/pix);
+int n = floor(nbin*pix/d); 
+double I[n_pix][n_pix];
+double min = histo->Integral();
+double max = 0.;
+for (int i=0; i < n_pix; i++){
+    for (int j=0; j < n_pix; j++){
+        double temp = 0.;
+        for (int x = i*n; x < (i+1)*n; x++){
+            for (int y = j*n; y < (j+1)*n; y++){
+                temp = temp + histo->GetBinContent(x, y);
+            }
+        }
+        I[i][j] = temp;   
+        if (temp < min && temp!=0.) min = temp;
+        else if (temp >= max) max = temp;
+        // cout << max << "    " << min << endl;
+    }
+
+}
+
+return((max-min)/(max+min));
+}
+
 // Gaussian function
 Double_t fgauss(Double_t *x, Double_t *par)
 {
@@ -200,8 +227,6 @@ Double_t fgauss(Double_t *x, Double_t *par)
     Double_t fitval = par[0]*TMath::Exp(-0.5*arg*arg);
     return fitval;
 }
-
-
 
 void Align(int nevt){
 gStyle->SetOptStat(0);
@@ -461,11 +486,12 @@ dy2 = -7.11587e-02;
 dy3 = -2.82983e-02;
 // ----------------------------------------------------------------------
 // Paramètres limites
-Double_t lim = 2. ;
-Double_t lim_theta = 0.5;
+Double_t lim = 3. ;
+Double_t lim_theta = 0.2;
+Int_t nbin = 150;
 // ----------------------------------------------------------------------
 
-TH2D *h2d = new TH2D("h2d","", 150,0,50,150,0,50);
+TH2D *h2d = new TH2D("h2d","", nbin,0,50,nbin,0,50);
 
 TH2D *test = new TH2D("test","", 100,0,50,100, -80, -50);
 TH2D *test1 = new TH2D("test1","", 100,0,50,100, -80, -50);
@@ -528,7 +554,11 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                         // if (dist(M2[p], int2) < dist(O, dM2[p]) && dist(M3[q], int3) < dist(O, dM3[q])){
                             ++n_track_non_dev;
                             Double_t theta = angle(O, N, M4[l], M1[k]);
-                            inc->Fill(theta*180./3.141592652589);
+                            // inc->Fill(theta*180./3.141592652589);
+                            // alternative tangente
+                            Point M12;
+                            M12.setPoint(M2[p].coordx(), M2[p].coordy(), M1Z);
+                            inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*180./3.141592652589);
                         }
                         else{
                             Double_t DOCA = dist(findDOCA(M1[k], M2[p], M3[q], M4[l])[0], findDOCA(M1[k], M2[p], M3[q], M4[l])[1]);
@@ -550,9 +580,13 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                                     // Mesure theta entre les droites 
                                     // Double_t theta_dev = angle(M1[k], POCA, POCA, M4[l]); 
                                     Double_t theta_dev = angle(M1[k], M2[p], M3[q], M4[l]); // parce que why not, to discuss
-                                    Double_t theta = angle(O, N, M2[p], M1[k]);
+                                    // Double_t theta = angle(O, N, M2[p], M1[k]);
+                                    // inc->Fill(theta*180./3.141592652589);
                                     h1d->Fill(theta_dev);
-                                    inc->Fill(theta*180./3.141592652589);
+                                    // Alternative tan calculation
+                                    Point M12;
+                                    M12.setPoint(M2[p].coordx(), M2[p].coordy(), M1Z);
+                                    inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*180./3.141592652589);
                                     // cout << "Theta = " << theta << endl;
                                     // ici conditions diffraction max etc;
                                     if (theta_dev > lim_theta){
@@ -685,8 +719,17 @@ canvas5->Update();
 canvas5->SaveAs(("POCAPosY_" + object + "_DOCA_" + to_string(lim) + "_theta_"+ to_string(lim_theta) +  ".pdf").c_str()); 
 canvas5->Close();
 
+cout << "------------------------------------------" << endl;
+cout << "Limite sur DOCA = " << lim << endl;
+cout << "Limite sur theta dev (rad) = " << lim_theta << endl;
+cout << "------------------------------------------" << endl;
 cout << "Contraste projX = " << C_projX << endl;
 cout << "Contraste projY = " << C_projY << endl;
+cout << "------------------------------------------" << endl; 
+cout << "Contraste intégré (25cm) = " << Contrast(h2d, 25, nbin) << endl;
+cout << "Contraste intégré (5cm) = " << Contrast(h2d, 5, nbin) << endl;
+cout << "Contraste intégré (2.5cm) = " << Contrast(h2d, 2.5, nbin) << endl;
+cout << "Contraste intégré (1cm) = " << Contrast(h2d, 1, nbin) << endl;
 
 file->Close();
 
