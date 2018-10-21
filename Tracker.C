@@ -4,7 +4,7 @@
 // TL MICROMEGAS TRACKER
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
-//comment on s'en sert
+// Align function to find the correction on alignment of M2 and M3
 // ---------------------------------------------------------------------------------
 #include <iostream>
 #include <fstream>
@@ -173,18 +173,7 @@ vector<Point> findDOCA(Point A, Point B, Point C, Point D)
         Point P1;
         Point P2;
         P1.setPoint(A.coordx() + v1.coordx()*lambda, A.coordy() + v1.coordy()*lambda, A.coordz() + v1.coordz()*lambda);
-        P2.setPoint(D.coordx() + v2.coordx()*mu, D.coordy() + v2.coordy()*mu, D.coordz() + v2.coordz()*mu);
-        // if (isnan(P1.coordx())) {
-        //     cout << "Problem here !!!" << endl;
-        //     cout << A.coordx() << "     " << A.coordy() << "     " << A.coordz()<< endl;
-        //     cout << B.coordx() << "     " << B.coordy() << "     " << B.coordz()<< endl;
-        //     cout << C.coordx() << "     " << C.coordy() << "     " << C.coordz()<< endl;
-        //     cout << D.coordx() << "     " << D.coordy() << "     " << D.coordz()<< endl;
-        //     cout << "Lambda.   " << lambda << "   " << "Mu.   " << mu << endl;
-        //     cout << "a.   " << a << "   " << "b.   " << b << endl;  
-        //     cout << "c.   " << c << "   " << "d.   " << d << endl;
-        //     cout << "e.   " << e << "   " << "f.   " << f << endl; 
-        // } 
+        P2.setPoint(D.coordx() + v2.coordx()*mu, D.coordy() + v2.coordy()*mu, D.coordz() + v2.coordz()*mu); 
         result.push_back(P1);
         result.push_back(P2);
         return(result);
@@ -237,7 +226,6 @@ cout << "Tree opened!" << endl;
 Double_t MGv2_ClusPos[8][300];
 Double_t MGv2_ClusSize[8][300];
 Int_t evn;
-Int_t n = tree->GetEntries();
 
 tree->SetBranchAddress("evn", &evn);
 tree->SetBranchAddress("MGv2_ClusPos", &MGv2_ClusPos);
@@ -267,7 +255,6 @@ h4->GetXaxis()->SetTitle("dY (cm)");
 h4->GetYaxis()->SetTitle("Number of events");
 
 boost::progress_display show_progress(nevt);
-// for ( int i = 0; i < n; ++i) // Loop over the events 
 for ( int i = 0; i < nevt  ; ++i){ // Loop over the events 
         ++show_progress;
         tree->GetEntry(i);
@@ -306,21 +293,15 @@ for ( int i = 0; i < nevt  ; ++i){ // Loop over the events
             for  ( int l = 0; l < m; ++l){
                 for  ( int p = 0; p < m; ++p){
                     for  ( int q = 0; q < m; ++q){
-                        // if distance du point th M1-M4 à un point de M2 et M3 < sqrt(dx^2+dy^2) du point alors track bim bam boum    
                         Point int2 = PointTh(M1[k], M4[l], 2);
                         Point int3 = PointTh(M1[k], M4[l], 3);
-                        // cout << "dev M2 " << dist(O, dM2[p]) << endl;
-                        // cout << "dev M3 " << dist(O, dM3[p]) << endl;
+                        // cout << "Distance to data point M2 " << dist(O, dM2[p]) << endl;
+                        // cout << "Distance to data point M3 " << dist(O, dM3[p]) << endl;
                         if (dist(M2[p], int2) < 0.5*dist(O, dM2[p]) && dist(M3[q], int3) < 0.5*dist(O, dM3[q])){
-                            
-                            // cout << "Track pas déviée : "<< i << "    " << k << "    " << p << "    " << q << "    " << l << endl;
-                            
                             double dx2 = M2[p].coordx() - int2.coordx();
                             double dy2 = M2[p].coordy() - int2.coordy();
-                            // cout << dx2 << "    " << dy2 << endl;
                             double dx3 = M3[q].coordx() - int3.coordx();
                             double dy3 = M3[q].coordy() - int3.coordy();
-                            // cout << dx3 << "    " << dy3 << endl;
                             h1->Fill(dx2);
                             h2->Fill(dy2);
                             h3->Fill(dx3);
@@ -464,7 +445,8 @@ Double_t M4Z = -136.6;
 // Double_t M4Z = -126.5;
 
 
-//  souci avec les données de 2017
+//  souci avec les données de 2017, changement set up entre deux prises de données ? 
+//  OK pour chameau, pas pour cactus, très bruité
 
 
 Double_t Zp = -70.; //Z plateau 
@@ -493,7 +475,7 @@ Int_t nbin = 150;
 // ----------------------------------------------------------------------
 
 TH2D *h2d = new TH2D("h2d","", nbin,0,50,nbin,0,50);
-TH2D *h2d1 = new TH2D("h2d1","", nbin,0,50,nbin,0,50);//, 2*nbin/5, -70, -50);
+TH2D *h2d1 = new TH2D("h2d1","", nbin,0,50,nbin,0,50);
 
 TH2D *test = new TH2D("test","", nbin/5, -70, -60, nbin, 0, 50);
 TH2D *test1 = new TH2D("test1","", nbin,0,50, nbin/5, -70, -60);
@@ -503,7 +485,7 @@ TH1D *inc = new TH1D("inc","Muons incidence angle", 100, 0.,30.);
 
 boost::progress_display show_progress(n);
 for ( int i = 0; i < n; ++i){ // Loop over the events 
-// for ( int i = 0; i < 20000  ; ++i){ // Loop over the events 
+// for ( int i = 0; i < 2000  ; ++i){ // Test loop over the few events 
         ++show_progress;
         tree->GetEntry(i);
         Int_t m(0);
@@ -547,13 +529,10 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
             for  ( int l = 0; l < m; ++l){
                 for  ( int p = 0; p < m; ++p){
                     for  ( int q = 0; q < m; ++q){
-                        // if distance du point th M1-M4 à un point de M2 et M3 < sqrt(dx^2+dy^2) du point alors track bim bam boum    
+                        // if distance du point th M1-M4 à un point de M2 et M3 < sqrt(dx^2+dy^2) du point alors non dev
                         Point int2 = PointTh(M1[k], M4[l], 2);
                         Point int3 = PointTh(M1[k], M4[l], 3);
-                        // cout << "dev M2 " << dist(O, dM2[p]) << endl;
-                        // cout << "dev M3 " << dist(O, dM3[p]) << endl;
                         if (dist(M2[p], int2) < 0.5*dist(O, dM2[p]) && 0.5*dist(M3[q], int3) < dist(O, dM3[q])){
-                        // if (dist(M2[p], int2) < dist(O, dM2[p]) && dist(M3[q], int3) < dist(O, dM3[q])){
                             ++n_track_non_dev;
                             Double_t theta = angle(O, N, M4[l], M1[k]);
                             // inc->Fill(theta*conv_rad_deg);
@@ -564,18 +543,13 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                         }
                         else{
                             Double_t DOCA = dist(findDOCA(M1[k], M2[p], M3[q], M4[l])[0], findDOCA(M1[k], M2[p], M3[q], M4[l])[1]);
-                            // Ajouter condition DOCA < qqc
                             if (DOCA > lim) {
-                                // cout << "Fausse track!" << endl;
                                 break;
                             }
                             else{
-                                // cout << "DOCA = " << DOCA << endl;
                                 Point POCA;
-                                // POCA = inBetween(top[POCAsearch[pos][0]], bottom[POCAsearch[pos][1]]);
                                 POCA = inBetween(findDOCA(M1[k], M2[p], M3[q], M4[l])[0], findDOCA(M1[k], M2[p], M3[q], M4[l])[1]);
                                 if (POCA.coordz() < Zp || POCA.coordz() > Zp+Zb) {
-                                    // cout << "Fausse track!" << endl;
                                     break;
                                 }
                                 else{
@@ -591,13 +565,10 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                                     // inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*conv_rad_deg);
                                     // ici conditions diffraction max etc;
                                     if (theta_dev > lim_theta){
-                                        // cout << "Déviation supérieure a déviation max -> Fausse track!" << endl;
-                                        // ici big soucis theta dev max en theorie 0.006...
                                         break;
                                     }
                                     else{
                                     ++n_track_dev;
-                                    // cout << min(1., 1./inc->GetBinContent(theta)) << endl;
                                     h2d->Fill(50.-POCA.coordy(), POCA.coordx());//, min(1., 1000./inc->GetBinContent(theta))); // poids test
                                     h2d1->Fill(50.-POCA.coordy(), POCA.coordx(), 70+POCA.coordz()); // poids test
                                     test->Fill(POCA.coordz(), POCA.coordx());
