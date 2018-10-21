@@ -437,6 +437,7 @@ cout << "Tree opened!" << endl;
 Double_t MGv2_ClusPos[8][300];
 Double_t MGv2_ClusSize[8][300];
 Int_t evn;
+double conv_rad_deg = 180./3.14159265;
 Int_t n = tree->GetEntries();
 
 tree->SetBranchAddress("evn", &evn);
@@ -486,22 +487,23 @@ dy2 = -7.11587e-02;
 dy3 = -2.82983e-02;
 // ----------------------------------------------------------------------
 // Paramètres limites
-Double_t lim = 3. ;
-Double_t lim_theta = 0.2;
+Double_t lim = 1. ;
+Double_t lim_theta = 15.;
 Int_t nbin = 150;
 // ----------------------------------------------------------------------
 
 TH2D *h2d = new TH2D("h2d","", nbin,0,50,nbin,0,50);
+TH2D *h2d1 = new TH2D("h2d1","", nbin,0,50,nbin,0,50);//, 2*nbin/5, -70, -50);
 
-TH2D *test = new TH2D("test","", 100,0,50,100, -80, -50);
-TH2D *test1 = new TH2D("test1","", 100,0,50,100, -80, -50);
+TH2D *test = new TH2D("test","", nbin/5, -70, -60, nbin, 0, 50);
+TH2D *test1 = new TH2D("test1","", nbin,0,50, nbin/5, -70, -60);
 
-TH1D *h1d = new TH1D("h1d","Distribution of the deviation angle", 100, 0, 2);
+TH1D *h1d = new TH1D("h1d","Distribution of the deviation angle", 100, 0, 20);
 TH1D *inc = new TH1D("inc","Muons incidence angle", 100, 0.,30.);
 
 boost::progress_display show_progress(n);
 for ( int i = 0; i < n; ++i){ // Loop over the events 
-// for ( int i = 0; i < 2000  ; ++i){ // Loop over the events 
+// for ( int i = 0; i < 20000  ; ++i){ // Loop over the events 
         ++show_progress;
         tree->GetEntry(i);
         Int_t m(0);
@@ -554,11 +556,11 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                         // if (dist(M2[p], int2) < dist(O, dM2[p]) && dist(M3[q], int3) < dist(O, dM3[q])){
                             ++n_track_non_dev;
                             Double_t theta = angle(O, N, M4[l], M1[k]);
-                            // inc->Fill(theta*180./3.141592652589);
+                            // inc->Fill(theta*conv_rad_deg);
                             // alternative tangente
                             Point M12;
                             M12.setPoint(M2[p].coordx(), M2[p].coordy(), M1Z);
-                            inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*180./3.141592652589);
+                            inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*conv_rad_deg);
                         }
                         else{
                             Double_t DOCA = dist(findDOCA(M1[k], M2[p], M3[q], M4[l])[0], findDOCA(M1[k], M2[p], M3[q], M4[l])[1]);
@@ -579,15 +581,14 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                                 else{
                                     // Mesure theta entre les droites 
                                     // Double_t theta_dev = angle(M1[k], POCA, POCA, M4[l]); 
-                                    Double_t theta_dev = angle(M1[k], M2[p], M3[q], M4[l]); // parce que why not, to discuss
-                                    // Double_t theta = angle(O, N, M2[p], M1[k]);
-                                    // inc->Fill(theta*180./3.141592652589);
+                                    Double_t theta_dev = conv_rad_deg*angle(M1[k], M2[p], M3[q], M4[l]); // parce que why not, to discuss
+                                    Double_t theta = conv_rad_deg*angle(O, N, M2[p], M1[k]);
+                                    inc->Fill(theta);
                                     h1d->Fill(theta_dev);
                                     // Alternative tan calculation
-                                    Point M12;
-                                    M12.setPoint(M2[p].coordx(), M2[p].coordy(), M1Z);
-                                    inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*180./3.141592652589);
-                                    // cout << "Theta = " << theta << endl;
+                                    // Point M12;
+                                    // M12.setPoint(M2[p].coordx(), M2[p].coordy(), M1Z);
+                                    // inc->Fill(atan(dist(M12, M1[k])/(M1Z-M2Z))*conv_rad_deg);
                                     // ici conditions diffraction max etc;
                                     if (theta_dev > lim_theta){
                                         // cout << "Déviation supérieure a déviation max -> Fausse track!" << endl;
@@ -596,10 +597,11 @@ for ( int i = 0; i < n; ++i){ // Loop over the events
                                     }
                                     else{
                                     ++n_track_dev;
-                                    // cout << POCA.coordx() << "  " << POCA.coordy() << endl;
-                                    h2d->Fill(POCA.coordx(), POCA.coordy());//, 1./(cos(theta)*cos(theta)) );
-                                    test->Fill(POCA.coordx(), POCA.coordz());
-                                    test1->Fill(POCA.coordy(), POCA.coordz());
+                                    // cout << min(1., 1./inc->GetBinContent(theta)) << endl;
+                                    h2d->Fill(50.-POCA.coordy(), POCA.coordx());//, min(1., 1000./inc->GetBinContent(theta))); // poids test
+                                    h2d1->Fill(50.-POCA.coordy(), POCA.coordx(), 70+POCA.coordz()); // poids test
+                                    test->Fill(POCA.coordz(), POCA.coordx());
+                                    test1->Fill(50.-POCA.coordy(), POCA.coordz());
                                     }
                                 }
                             }
@@ -621,8 +623,8 @@ canvas2->cd();
 h2d->SetTitle("Reconstruction");
 gStyle->SetPalette(kBird);
 h2d->SetMinimum(-0.1);
-h2d->GetXaxis()->SetTitle("X (cm)");
-h2d->GetYaxis()->SetTitle("Y (cm)");
+h2d->GetXaxis()->SetTitle("Y (cm)");
+h2d->GetYaxis()->SetTitle("X (cm)");
 h2d->Draw("COLZ");
 canvas2->SaveAs(("Reconstruction_" + object + "_DOCA_" + to_string(lim) + "_theta_"+ to_string(lim_theta) +  ".pdf").c_str());
 canvas2->Close();
@@ -653,8 +655,9 @@ canvas->Close();
 
 TCanvas *canvas1 = new TCanvas("canvas1","",0,0,600,600);
 canvas1->cd();
+canvas1->SetLeftMargin(0.15);
 h1d->SetMinimum(0.);
-h1d->GetXaxis()->SetTitle("Deviation angle");
+h1d->GetXaxis()->SetTitle("Deviation angle (deg)");
 h1d->GetYaxis()->SetTitle("Number of tracks");
 h1d->Draw("hist");
 // canvas->Update();
@@ -697,31 +700,46 @@ canvas->Update();
 canvas3->SaveAs(("Inc_" + object + ".pdf").c_str()); 
 canvas3->Close();
 
-TCanvas *canvas4 = new TCanvas("canvas4","",0,0,600,600);
-canvas4->cd();
+TCanvas *pocapos = new TCanvas("pocapos","",0,0,600,600);
+pocapos->SetTitle("Reconstruction");
+pocapos->Divide(2,2);
+pocapos->cd(2);
 gStyle->SetPalette(kBird);
+// h2d->SetMinimum(-0.1);
+// h2d->GetXaxis()->SetTitle("X (cm)");
+// h2d->GetYaxis()->SetTitle("Y (cm)");
+h2d->Draw("COLZ");
+pocapos->cd(1);
+gPad->SetPad(0.4, 0.51, 0.5, 0.99);
 test->SetMinimum(-0.1);
-test->GetXaxis()->SetTitle("X (cm)");
-test->GetYaxis()->SetTitle("Z (cm)");
-test->Draw("COLZ");
-canvas4->Update();
-canvas4->SaveAs(("POCAPosX_" + object + "_DOCA_" + to_string(lim) + "_theta_"+ to_string(lim_theta) +  ".pdf").c_str()); 
-canvas4->Close();
+// test1->GetXaxis()->SetTitle("Y (cm)");
+// test1->GetYaxis()->SetTitle("Z (cm)");
+test->Draw("COL");
+pocapos->cd(4);
+gPad->SetPad(0.51, 0.4, 0.99, 0.5);
+test1->SetMinimum(-0.1);
+// test->GetXaxis()->SetTitle("X (cm)");
+// test->GetYaxis()->SetTitle("Z (cm)");
+test1->Draw("COL");
+pocapos->Update();
+pocapos->SaveAs(("RecoProjPOCA_" + object + "_DOCA_" + to_string(lim) + "_theta_"+ to_string(lim_theta) +  ".pdf").c_str());
+pocapos->Close();
 
 TCanvas *canvas5 = new TCanvas("canvas5","",0,0,600,600);
-canvas4->cd();
+canvas5->cd();
 gStyle->SetPalette(kBird);
-test1->SetMinimum(-0.1);
-test1->GetXaxis()->SetTitle("Y (cm)");
-test1->GetYaxis()->SetTitle("Z (cm)");
-test1->Draw("COLZ");
+// h2d1->SetMinimum(-0.1);
+h2d1->GetXaxis()->SetTitle("Y (cm)");
+h2d1->GetYaxis()->SetTitle("X (cm)");
+// h3d->GetZaxis()->SetTitle("Z (cm)");
+h2d1->Draw("SURF3");
 canvas5->Update();
-canvas5->SaveAs(("POCAPosY_" + object + "_DOCA_" + to_string(lim) + "_theta_"+ to_string(lim_theta) +  ".pdf").c_str()); 
+canvas5->SaveAs(("Plot3D_" + object + "_DOCA_" + to_string(lim) + "_theta_"+ to_string(lim_theta) +  ".pdf").c_str()); 
 canvas5->Close();
 
 cout << "------------------------------------------" << endl;
-cout << "Limite sur DOCA = " << lim << endl;
-cout << "Limite sur theta dev (rad) = " << lim_theta << endl;
+cout << "Limite sur DOCA (cm) = " << lim << endl;
+cout << "Limite sur theta dev (deg) = " << lim_theta << endl;
 cout << "------------------------------------------" << endl;
 cout << "Contraste projX = " << C_projX << endl;
 cout << "Contraste projY = " << C_projY << endl;
